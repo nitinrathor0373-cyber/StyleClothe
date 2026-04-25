@@ -1,0 +1,8 @@
+{
+  "name": "Remix: StyleClothes",
+  "description": "A premium single-vendor eCommerce platform for men, women, and children with an AI-powered chatbot assistant, advanced inventory management, and a comprehensive admin dashboard.",
+  "requestFramePermissions": [
+    "geolocation"
+  ],
+  "majorCapabilities": []
+}

@@ -1,0 +1,141 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // --- GLOBAL HELPERS ---
+    function isSignedIn() { return request.auth != null; }
+    function isOwner(userId) { return isSignedIn() && request.auth.uid == userId; }
+    function isAdmin() {
+      return isSignedIn() && (
+        request.auth.token.email == 'nitinrathor0373@gmail.com' ||
+        exists(/databases/$(database)/documents/admins/$(request.auth.uid)) ||
+        (exists(/databases/$(database)/documents/users/$(request.auth.uid)) && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin')
+      );
+    }
+    function isValidId(id) { return id is string && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$'); }
+    function incoming() { return request.resource.data; }
+    function existing() { return resource.data; }
+
+    // Default deny
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // --- USERS ---
+    function isValidUser(data) {
+      return data.email is string && data.email.size() <= 200 &&
+             data.role in ['user', 'admin'] &&
+             data.joinedAt is string;
+             // Optional fields: interests, address, displayName
+    }
+    match /users/{userId} {
+      allow read: if isOwner(userId) || isAdmin();
+      allow list: if isAdmin();
+      allow create: if isOwner(userId) && isValidUser(incoming()) && incoming().role == 'user';
+      allow update: if (isOwner(userId) || isAdmin()) && (
+        (isOwner(userId) && incoming().role == existing().role && (isValidUser(incoming()) || true)) || 
+        isAdmin()
+      );
+    }
+
+    // --- ANNOUNCEMENTS ---
+    match /announcements/{annId} {
+      allow get, list: if true;
+      allow write: if isAdmin();
+    }
+
+    // --- PRODUCTS ---
+    function isValidProduct(data) {
+      return data.name is string && data.name.size() <= 200 &&
+             data.price is number && data.price >= 0 &&
+             data.category is string &&
+             data.stock is number && data.stock >= 0 &&
+             data.images is list;
+             // Optional fields like colors, sizes, description, createdAt, updatedAt are allowed
+    }
+    match /products/{productId} {
+      allow get, list: if true;
+      allow create: if isAdmin() && isValidProduct(incoming());
+      allow update: if (isAdmin() && (isValidProduct(incoming()) || incoming().diff(existing()).affectedKeys().hasOnly(['stock', 'updatedAt']))) || 
+                     (isSignedIn() && incoming().diff(existing()).affectedKeys().hasOnly(['stock']) && (incoming().stock < existing().stock || (isAdmin() && (incoming().stock == 0 || incoming().stock == 50))));
+      allow delete: if isAdmin();
+    }
+
+    // --- ORDERS ---
+    function isValidOrder(data) {
+      return data.userId is string &&
+             data.items is list && data.items.size() > 0 &&
+             data.totalAmount is number &&
+             data.status in ['pending', 'processing', 'shipped', 'delivered', 'cancelled'] &&
+             data.paymentStatus in ['unpaid', 'paid', 'pending_verification'];
+    }
+    match /orders/{orderId} {
+      allow list: if isSignedIn() && (resource.data.userId == request.auth.uid || isAdmin());
+      allow get: if isSignedIn() && (resource.data.userId == request.auth.uid || isAdmin());
+      allow create: if isSignedIn() && incoming().userId == request.auth.uid && isValidOrder(incoming());
+      allow update: if (isOwner(existing().userId) || isAdmin()) && (
+        (isOwner(existing().userId) && incoming().status == existing().status && incoming().diff(existing()).affectedKeys().hasOnly(['paymentProofUrl', 'paymentStatus', 'updatedAt'])) ||
+        isAdmin()
+      );
+    }
+
+    // --- REVIEWS ---
+    function isValidReview(data) {
+      return data.productId is string &&
+             data.userId == request.auth.uid &&
+             data.text is string && data.text.size() <= 2000 &&
+             data.rating is number && data.rating >= 1 && data.rating <= 5 &&
+             data.createdAt is string;
+    }
+    match /reviews/{reviewId} {
+      allow list: if true;
+      allow get: if true;
+      allow create: if isSignedIn() && isValidReview(incoming());
+      allow update, delete: if isAdmin() || (isSignedIn() && existing().userId == request.auth.uid);
+    }
+
+    // --- CONVERSATIONS ---
+    match /conversations/{convId} {
+      allow read: if isSignedIn() && (convId == request.auth.uid || isAdmin());
+      allow write: if isSignedIn() && (convId == request.auth.uid || isAdmin());
+
+      match /messages/{msgId} {
+        allow read: if isSignedIn() && (convId == request.auth.uid || isAdmin());
+        allow create: if isSignedIn() && (convId == request.auth.uid || isAdmin());
+      }
+    }
+
+    // --- LEGAL ---
+    match /legal/{contentId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    // --- MARKETING & ADS ---
+    function isValidAd(data) {
+      return data.type is string && 
+             data.enabled is bool &&
+             data.title is string && data.title.size() <= 200 &&
+             data.description is string && data.description.size() <= 1000;
+             // Optional: mediaUrl, url, createdAt, updatedAt
+    }
+    match /ads/{adId} {
+      allow list, get: if true;
+      allow create: if isAdmin() && isValidAd(incoming());
+      allow update: if isAdmin() && (isValidAd(incoming()) || true); // Allow partial updates for admins
+      allow delete: if isAdmin();
+    }
+
+    match /media/{mediaId} {
+      allow list, get: if true;
+      allow create: if isAdmin() && incoming().url is string;
+      allow update, delete: if isAdmin();
+    }
+
+    // --- ADMINS (The Source of Truth) ---
+    match /admins/{adminId} {
+      allow read: if isAdmin();
+      allow write: if false; // Only manageable via Firebase Console or special script
+    }
+  }
+}

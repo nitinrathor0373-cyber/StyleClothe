@@ -1,0 +1,173 @@
+{
+  "entities": {
+    "User": {
+      "title": "User",
+      "description": "User profile information and role.",
+      "type": "object",
+      "properties": {
+        "displayName": { "type": "string" },
+        "email": { "type": "string" },
+        "role": { "type": "string", "enum": ["user", "admin"] },
+        "joinedAt": { "type": "string", "format": "date-time" },
+        "address": { "type": "string" },
+        "interests": { "type": "array", "items": { "type": "string" } }
+      },
+      "required": ["email", "role"]
+    },
+    "Review": {
+      "title": "Review",
+      "description": "User product reviews.",
+      "type": "object",
+      "properties": {
+        "productId": { "type": "string" },
+        "userId": { "type": "string" },
+        "userName": { "type": "string" },
+        "text": { "type": "string" },
+        "rating": { "type": "number" },
+        "images": { "type": "array", "items": { "type": "string" } },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["productId", "userId", "text", "rating"]
+    },
+    "Product": {
+      "title": "Product",
+      "description": "Cloth product details.",
+      "type": "object",
+      "properties": {
+        "name": { "type": "string" },
+        "price": { "type": "number" },
+        "category": { "type": "string" },
+        "stock": { "type": "number" },
+        "description": { "type": "string" },
+        "images": { "type": "array", "items": { "type": "string" } },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["name", "price", "category", "stock"]
+    },
+    "Order": {
+      "title": "Order",
+      "description": "Purchase order records.",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "items": { "type": "array" },
+        "totalAmount": { "type": "number" },
+        "status": { "type": "string", "enum": ["pending", "processing", "shipped", "delivered"] },
+        "paymentStatus": { "type": "string", "enum": ["unpaid", "paid"] },
+        "proofUrl": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["userId", "items", "totalAmount", "status", "paymentStatus"]
+    },
+    "Conversation": {
+      "title": "Conversation",
+      "description": "Chat conversation metadata.",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "lastMessage": { "type": "string" },
+        "lastUpdatedAt": { "type": "string", "format": "date-time" },
+        "isManualMode": { "type": "boolean" }
+      },
+      "required": ["userId"]
+    },
+    "Message": {
+      "title": "Message",
+      "description": "Individual chat message.",
+      "type": "object",
+      "properties": {
+        "text": { "type": "string" },
+        "role": { "type": "string", "enum": ["user", "model", "admin"] },
+        "timestamp": { "type": "string", "format": "date-time" },
+        "type": { "type": "string" }
+      },
+      "required": ["text", "role", "timestamp"]
+    },
+    "Legal": {
+      "title": "Legal",
+      "description": "Static content for About, Terms, Privacy.",
+      "type": "object",
+      "properties": {
+        "type": { "type": "string", "enum": ["about", "terms", "privacy"] },
+        "content": { "type": "string" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["type", "content"]
+    },
+    "Ad": {
+      "title": "Ad",
+      "description": "Configuration for an omnichannel ad campaign.",
+      "type": "object",
+      "properties": {
+        "type": { "type": "string" },
+        "enabled": { "type": "boolean" },
+        "title": { "type": "string" },
+        "description": { "type": "string" },
+        "url": { "type": "string" },
+        "mediaUrl": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["type", "enabled", "title"]
+    },
+    "Media": {
+      "title": "Media",
+      "description": "Centralized media asset record.",
+      "type": "object",
+      "properties": {
+        "url": { "type": "string" },
+        "name": { "type": "string" },
+        "type": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["url"]
+    }
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": "User",
+      "description": "User profiles."
+    },
+    "/products/{productId}": {
+      "schema": "Product",
+      "description": "Products for sale."
+    },
+    "/orders/{orderId}": {
+      "schema": "Order",
+      "description": "Customer orders."
+    },
+    "/conversations/{convId}": {
+      "schema": "Conversation",
+      "description": "Active chat sessions."
+    },
+    "/conversations/{convId}/messages/{msgId}": {
+      "schema": "Message",
+      "description": "Messages within a conversation."
+    },
+    "/legal/{contentId}": {
+      "schema": "Legal",
+      "description": "Legal and static pages content."
+    },
+    "/reviews/{reviewId}": {
+      "schema": "Review",
+      "description": "User product reviews."
+    },
+    "admins/{adminId}": {
+      "schema": { "type": "object", "properties": { "email": { "type": "string" } } },
+      "description": "List of authorized admin emails."
+    },
+    "/announcements/{annId}": {
+      "schema": { "type": "object", "properties": { "message": { "type": "string" }, "timestamp": { "type": "string", "format": "date-time" } } },
+      "description": "System wide announcements."
+    },
+    "/ads/{adId}": {
+      "schema": "Ad",
+      "description": "Global advertising campaigns."
+    },
+    "/media/{mediaId}": {
+      "schema": "Media",
+      "description": "Central media vault assets."
+    }
+  }
+}
